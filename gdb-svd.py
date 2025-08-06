@@ -20,7 +20,7 @@
 import re
 import gdb
 from terminaltables import AsciiTable
-from cmsis_svd.parser import SVDParser
+from cmsis_svd.parser import SVDParser, SVDAccessType
 from textwrap import wrap
 
 class GdbSvd(gdb.Command):
@@ -133,7 +133,8 @@ class GdbSvdCmd(gdb.Command):
                 else:
                     fval = self.get_fields_val(reg.fields, val)
                     val = "0x{:08x}".format(val)
-            except:
+            except Exception as e:
+                print(e)
                 val = "DataAbort"
                 fval = ""
 
@@ -239,13 +240,14 @@ class GdbSvdCmd(gdb.Command):
         """ Read register and return an integer
         """
         #access could be not defined for a register
-        if register.access in [None, "read-only", "read-write", "read-writeOnce"]:
+        if register.access in [None, SVDAccessType.READ_ONLY, SVDAccessType.READ_WRITE, SVDAccessType.READ_WRITE_ONCE]:
             addr = peripheral.base_address + register.address_offset
             cmd = self.read_cmd.format(address=addr)
-            pattern = re.compile('(?P<ADDR>\w+):(\s*?(?P<VALUE>0x[a-f0-9]+))')
+            pattern = re.compile(r'(?P<ADDR>\w+):(\s*(?P<VALUE>(0x)?[a-f0-9]+))')
 
             try:
-                match = re.search(pattern, gdb.execute(cmd, False, True))
+                rv = gdb.execute(cmd, False, True)
+                match = re.search(pattern, rv)
                 val = int(match.group('VALUE'), 16)
             except Exception as err:
                 #if openocd can't access to addr => data abort
@@ -296,7 +298,7 @@ class GdbSvdGetCmd(GdbSvdCmd):
             return
 
         try:
-            regs = periph.registers
+            regs = periph.get_registers()
 
             if len(args) == 2:
                 reg_name = args[1].upper()
@@ -341,7 +343,7 @@ class GdbSvdSetCmd(GdbSvdCmd):
 
         try:
             reg_name =  args[1].upper()
-            reg = [r for r in periph.registers if r.name == reg_name][0]
+            reg = [r for r in periph.get_registers() if r.name == reg_name][0]
             field = None
             if len(args) == 4:
                 field_name = args[2].upper()
@@ -388,7 +390,7 @@ class GdbSvdInfoCmd(GdbSvdCmd):
             if len(args) >= 2:
                 per = [ per for per in periphs if per.name == periph_name ][0]
                 reg_name =  args[1].upper()
-                regs = list(filter(lambda x: x.name.startswith(reg_name), per.registers))
+                regs = list(filter(lambda x: x.name.startswith(reg_name), per.get_registers()))
 
             if len(args) >= 3:
                 reg = [ reg for reg in regs if reg.name == reg_name ][0]
@@ -444,7 +446,7 @@ class GdbSvdDumpCmd(GdbSvdCmd):
                 file_object.write("Registers Dump\n")
                 file_object.close()
                 for per in periphs:
-                    regs = per.registers
+                    regs = per.get_registers()
                     GdbSvdCmd.print_registers(self, per, regs, output_file_name, False)
             except:
                 gdb.write("Error writting to file: {}\n".format(output_file_name))
