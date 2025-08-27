@@ -152,9 +152,13 @@ class GdbSvdCmd(gdb.Command):
         for f in fields:
             lsb = f.bit_offset
             msb = f.bit_offset + f.bit_width - 1
-            fname = "{}[{}:{}]".format(f.name, msb, lsb)
+            if f.bit_width > 1:
+                fname = "{}[{}:{}]".format(f.name, msb, lsb)
+            else:
+                fname = "{}[{}]".format(f.name, msb)
+
             fieldval = (reg_values >> lsb) & ((1 << f.bit_width) - 1)
-            fields_val += [{"name": fname, "value": fieldval}]
+            fields_val += [{"name": fname, "value": fieldval, "width": f.bit_width}]
 
         return fields_val
 
@@ -198,9 +202,16 @@ class GdbSvdCmd(gdb.Command):
             if fields is not None:
                 for f in fields:
                     if f["value"] > 0 and syntax_highlighting == True:
-                        f_str.append("\033[94m{name}={value:#x}\033[0m".format(**f))
+                        prefix = "\033[94m"
+                        suffix = "\033[0m"
                     else:
-                        f_str.append("{name}={value:#x}".format(**f))
+                        prefix = ""
+                        suffix = ""
+                    if f["width"] > 1:
+                        value = "{:x}".format(f["value"])
+                    else:
+                        value = "{:d}".format(f["value"])
+                    f_str.append("{:s}{:s}={:s}{:s}".format(prefix, f["name"], value, suffix))
 
             f_str = '\n'.join(wrap(" ".join(f_str), self.column_with))
             regs_table.append([r["name"], r["addr"], r["value"], f_str])
