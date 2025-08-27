@@ -208,7 +208,7 @@ class GdbSvdCmd(gdb.Command):
                         prefix = ""
                         suffix = ""
                     if f["width"] > 1:
-                        value = "{:x}".format(f["value"])
+                        value = "{:#x}".format(f["value"])
                     else:
                         value = "{:d}".format(f["value"])
                     f_str.append("{:s}{:s}={:s}{:s}".format(prefix, f["name"], value, suffix))
