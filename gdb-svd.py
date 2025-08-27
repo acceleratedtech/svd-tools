@@ -20,6 +20,7 @@
 import re
 import gdb
 from terminaltables import AsciiTable
+from terminaltables.width_and_alignment import terminal_size
 from cmsis_svd.parser import SVDParser, SVDAccessType
 from textwrap import wrap
 
@@ -68,7 +69,9 @@ class GdbSvdCmd(gdb.Command):
     def __init__(self, device, peripherals):
         self.device = device
         self.peripherals = peripherals
-        self.column_with = 100
+        # Should calculate the width of the non-field columns rather than
+        # hard coding but that is somewhat tricky.
+        self.column_width = min(100, terminal_size()[0] - 50)
         version = gdbserver = []
 
         try:
@@ -129,7 +132,7 @@ class GdbSvdCmd(gdb.Command):
 
                 if val is None:
                     fval = val
-                    val = reg.access
+                    val = reg.access.value
                 else:
                     fval = self.get_fields_val(reg.fields, val)
                     val = "0x{:08x}".format(val)
@@ -170,20 +173,20 @@ class GdbSvdCmd(gdb.Command):
             table_show.append(["name", "[msb:lsb]", "access", "description"])
             for f in fields:
                 mlsb = "[{}:{}]".format(f.bit_offset, f.bit_offset + f.bit_width - 1)
-                desc = '\n'.join(wrap(f.description, self.column_with))
+                desc = '\n'.join(wrap(f.description, self.column_width))
                 table_show.append([f.name, mlsb, f.access, desc])
         elif registers is not None:
             desc_title = "Registers"
             table_show.append(["name", "address", "access", "description"])
             for r in registers:
                 addr = r.parent.base_address + r.address_offset
-                desc = '\n'.join(wrap(r.description, self.column_with))
+                desc = '\n'.join(wrap(r.description, self.column_width))
                 table_show.append([r.name, "{:#x}".format(addr), r.access, desc])
         elif peripherals is not None:
             desc_title = "Peripherals"
             table_show.append(["name", "base", "access", "description"])
             for p in peripherals:
-                desc = '\n'.join(wrap(p.description, self.column_with))
+                desc = '\n'.join(wrap(p.description, self.column_width))
                 table_show.append([p.name, "{:#x}".format(p.base_address), p.access, desc])
 
         desc_table = AsciiTable(table_show, title = desc_title)
@@ -213,7 +216,7 @@ class GdbSvdCmd(gdb.Command):
                         value = "{:d}".format(f["value"])
                     f_str.append("{:s}{:s}={:s}{:s}".format(prefix, f["name"], value, suffix))
 
-            f_str = '\n'.join(wrap(" ".join(f_str), self.column_with))
+            f_str = '\n'.join(wrap(" ".join(f_str), self.column_width))
             regs_table.append([r["name"], r["addr"], r["value"], f_str])
         rval_table = AsciiTable(regs_table, title=peripheral.name)
 
