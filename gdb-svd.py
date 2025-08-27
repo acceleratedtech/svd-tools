@@ -269,7 +269,7 @@ class GdbSvdCmd(gdb.Command):
 
 # sub commands
 class GdbSvdGetCmd(GdbSvdCmd):
-    """Get register(s) value(s): svd get [peripheral] [register]
+    """Get register(s) value(s): svd get [peripheral] [register1[,register2,...]]
     """
     def __init__(self, device, peripherals):
         GdbSvdCmd.__init__(self, device, peripherals)
@@ -301,8 +301,8 @@ class GdbSvdGetCmd(GdbSvdCmd):
             regs = periph.get_registers()
 
             if len(args) == 2:
-                reg_name = args[1].upper()
-                regs = [[r for r in regs if r.name == reg_name][0]]
+                reg_names = [r.upper() for r in args[1].split(',')]
+                regs = [r for r in regs if r.name in reg_names]
 
             GdbSvdCmd.print_registers(self, periph, regs)
 
