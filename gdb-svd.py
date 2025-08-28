@@ -173,20 +173,20 @@ class GdbSvdCmd(gdb.Command):
             table_show.append(["name", "[msb:lsb]", "access", "description"])
             for f in fields:
                 mlsb = "[{}:{}]".format(f.bit_offset, f.bit_offset + f.bit_width - 1)
-                desc = '\n'.join(wrap(f.description, self.column_width))
+                desc = '\n'.join(wrap(re.sub(r"\s+", " ", f.description), self.column_width))
                 table_show.append([f.name, mlsb, f.access, desc])
         elif registers is not None:
             desc_title = "Registers"
             table_show.append(["name", "address", "access", "description"])
             for r in registers:
                 addr = r.parent.base_address + r.address_offset
-                desc = '\n'.join(wrap(r.description, self.column_width))
+                desc = '\n'.join(wrap(re.sub(r"\s+", " ", r.description), self.column_width))
                 table_show.append([r.name, "{:#x}".format(addr), r.access, desc])
         elif peripherals is not None:
             desc_title = "Peripherals"
             table_show.append(["name", "base", "access", "description"])
             for p in peripherals:
-                desc = '\n'.join(wrap(p.description, self.column_width))
+                desc = '\n'.join(wrap(re.sub(r"\s+", " ", p.description), self.column_width))
                 table_show.append([p.name, "{:#x}".format(p.base_address), p.access, desc])
 
         desc_table = AsciiTable(table_show, title = desc_title)
